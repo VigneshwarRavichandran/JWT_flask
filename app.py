@@ -10,9 +10,6 @@ class User(db.Model):
   username = db.Column(db.String(80), unique=True)
   password = db.Column(db.String(120))
 
-db.create_all()
-db.session.commit()
-
 @app.route('/register', methods=['POST'])
 def register():
   data = request.get_json()
@@ -28,6 +25,24 @@ def register():
       })
   return jsonify({
     'message' : 'User already exists'
+    })
+
+@app.route('/login', methods=['POST'])
+def login():
+  data = request.get_json()
+  username = data['username']
+  password = data['password']
+  user = User.query.filter_by(username=username).first()
+  if user:
+    if user.password == password:
+      return jsonify({
+        'message' : 'Login successfull'
+        })
+    return jsonify({
+        'message' : 'Invalid password'
+        })
+  return jsonify({
+    'message' : 'Invalid usernameS'
     })
 
 if __name__ == '__main__':
