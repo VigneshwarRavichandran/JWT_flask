@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from passlib.hash import sha256_crypt
+import jwt
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///example.sqlite"
@@ -8,16 +10,17 @@ db = SQLAlchemy(app)
 class User(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   username = db.Column(db.String(80), unique=True)
-  password = db.Column(db.String(120))
+  hashed_password = db.Column(db.String(1200))
 
 @app.route('/register', methods=['POST'])
 def register():
   data = request.get_json()
   username = data['username']
   password = data['password']
+  hashed_password = sha256_crypt.encrypt(password)
   user_exist = User.query.filter_by(username=username).all()
   if not user_exist:
-    user = User(username=username, password=password)
+    user = User(username=username, hashed_password=hashed_password)
     db.session.add(user)
     db.session.commit()
     return jsonify({
@@ -34,16 +37,24 @@ def login():
   password = data['password']
   user = User.query.filter_by(username=username).first()
   if user:
-    if user.password == password:
+    hashed_password = user.hashed_password
+    if sha256_crypt.verify(password, hashed_password):
+      access_token = jwt.encode({'username' : username, 'hashed_password' : hashed_password}, 'secret', algorithm='HS256')
       return jsonify({
-        'message' : 'Login successfull'
+        'message' : 'Login successfull',
+        'access_token' : [access_token]
         })
     return jsonify({
         'message' : 'Invalid password'
         })
   return jsonify({
-    'message' : 'Invalid usernameS'
+    'message' : 'Invalid username'
     })
+
+@app.route('/display', methods=['GET'])
+def display():
+  access_token = request.headers['token']
+
 
 if __name__ == '__main__':
   app.run(debug=True)
