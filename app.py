@@ -40,9 +40,9 @@ def login():
     hashed_password = user.hashed_password
     if sha256_crypt.verify(password, hashed_password):
       access_token = jwt.encode({'username' : username, 'hashed_password' : hashed_password}, 'secret', algorithm='HS256')
+      token = access_token.decode('utf-8')
       return jsonify({
-        'message' : 'Login successfull',
-        'access_token' : [access_token]
+        'auth_token' : token
         })
     return jsonify({
         'message' : 'Invalid password'
@@ -53,8 +53,10 @@ def login():
 
 @app.route('/display', methods=['GET'])
 def display():
-  access_token = request.headers['token']
-
+  token = request.headers['token']
+  access_token = token.encode('utf-8')
+  user_details = jwt.decode(access_token, 'secret')
+  return jsonify(user_details)
 
 if __name__ == '__main__':
   app.run(debug=True)
